@@ -27,6 +27,7 @@ import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.media.ImageReader.OnImageAvailableListener;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -35,6 +36,8 @@ import android.util.TypedValue;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+
+import androidx.appcompat.app.AlertDialog;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
@@ -45,7 +48,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Vector;
 
-import androidx.appcompat.app.AlertDialog;
 import pp.facerecognizer.env.BorderedText;
 import pp.facerecognizer.env.FileUtils;
 import pp.facerecognizer.env.ImageUtils;
@@ -58,6 +60,7 @@ import pp.facerecognizer.tracking.MultiBoxTracker;
 */
 public class MainActivity extends CameraActivity implements OnImageAvailableListener {
     private static final Logger LOGGER = new Logger();
+    static MediaPlayer mediaPlayer;
 
     private static final int FACE_SIZE = 160;
     private static final int CROP_SIZE = 300;
@@ -96,6 +99,14 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
     private boolean initialized = false;
     private boolean training = false;
 
+    public static void playAlarm(boolean flag) {
+        if (flag) {
+            mediaPlayer.start();
+        } else {
+            mediaPlayer.stop();
+        }
+    }
+
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -127,6 +138,8 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
                             }
                         })
                         .show());
+
+        mediaPlayer = MediaPlayer.create(this, R.raw.alarm_alarm_alarm);
     }
 
     @Override
@@ -225,7 +238,7 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
         }
 
         try {
-            classifier = Classifier.getInstance(getAssets(), FACE_SIZE, FACE_SIZE);
+            classifier = Classifier.getInstance(getAssets(), FACE_SIZE, FACE_SIZE, this);
         } catch (Exception e) {
             LOGGER.e("Exception initializing classifier!", e);
             finish();

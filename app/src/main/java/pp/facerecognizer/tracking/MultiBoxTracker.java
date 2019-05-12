@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Queue;
 
 import pp.facerecognizer.Classifier.Recognition;
+import pp.facerecognizer.MainActivity;
 import pp.facerecognizer.env.BorderedText;
 import pp.facerecognizer.env.ImageUtils;
 import pp.facerecognizer.env.Logger;
@@ -191,6 +192,9 @@ public class MultiBoxTracker {
                     !TextUtils.isEmpty(recognition.title)
                             ? String.format("%s %.2f", recognition.title, recognition.detectionConfidence)
                             : String.format("%.2f", recognition.detectionConfidence);
+            if (recognition.title.equals("Unknown")) {
+                MainActivity.playAlarm(true);
+            }
             borderedText.drawText(canvas, trackedPos.left + cornerSize, trackedPos.bottom, labelString);
         }
     }
