@@ -1,4 +1,4 @@
-# Realtime Face Recognizer
+# Realtime Intruder Detector
 
 [![Build Status](https://travis-ci.org/pillarpond/face-recognizer-android.svg?branch=master)](https://travis-ci.org/pillarpond/face-recognizer-android)
 
