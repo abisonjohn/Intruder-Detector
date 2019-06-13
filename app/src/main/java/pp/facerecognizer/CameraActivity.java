@@ -39,9 +39,10 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AppCompatActivity;
+
 import java.nio.ByteBuffer;
 
-import androidx.appcompat.app.AppCompatActivity;
 import pp.facerecognizer.env.ImageUtils;
 import pp.facerecognizer.env.Logger;
 
@@ -53,6 +54,7 @@ public abstract class CameraActivity extends AppCompatActivity
 
     private static final String PERMISSION_CAMERA = Manifest.permission.CAMERA;
     private static final String PERMISSION_STORAGE = Manifest.permission.WRITE_EXTERNAL_STORAGE;
+    private static final String PERMISSION_SMS = Manifest.permission.SEND_SMS;
 
     private boolean debug = false;
 
@@ -244,9 +246,9 @@ public abstract class CameraActivity extends AppCompatActivity
             if (shouldShowRequestPermissionRationale(PERMISSION_CAMERA) ||
                     shouldShowRequestPermissionRationale(PERMISSION_STORAGE)) {
                 Toast.makeText(CameraActivity.this,
-                        "Camera AND storage permission are required for this demo", Toast.LENGTH_LONG).show();
+                        "Camera, storage AND SMS permission are required", Toast.LENGTH_LONG).show();
             }
-            requestPermissions(new String[] {PERMISSION_CAMERA, PERMISSION_STORAGE}, PERMISSIONS_REQUEST);
+            requestPermissions(new String[]{PERMISSION_CAMERA, PERMISSION_STORAGE, PERMISSION_SMS}, PERMISSIONS_REQUEST);
         }
     }
 

@@ -1,23 +1,25 @@
 /*
-* Copyright 2016 The TensorFlow Authors. All Rights Reserved.
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*       http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright 2016 The TensorFlow Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package pp.facerecognizer;
 
 import android.content.ClipData;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
@@ -31,15 +33,17 @@ import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.SystemClock;
+import android.preference.PreferenceManager;
 import android.util.Size;
 import android.util.TypedValue;
 import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
 
 import androidx.appcompat.app.AlertDialog;
 
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.io.File;
@@ -55,15 +59,16 @@ import pp.facerecognizer.env.Logger;
 import pp.facerecognizer.tracking.MultiBoxTracker;
 
 /**
-* An activity that uses a TensorFlowMultiBoxDetector and ObjectTracker to detect and then track
-* objects.
-*/
+ * An activity that uses a TensorFlowMultiBoxDetector and ObjectTracker to detect and then track
+ * objects.
+ */
 public class MainActivity extends CameraActivity implements OnImageAvailableListener {
     private static final Logger LOGGER = new Logger();
     static MediaPlayer mediaPlayer;
 
     private static final int FACE_SIZE = 160;
     private static final int CROP_SIZE = 300;
+    public static boolean isAlertSent = false;
 
     private static final Size DESIRED_PREVIEW_SIZE = new Size(640, 480);
 
@@ -94,7 +99,8 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
 
     private Snackbar initSnackbar;
     private Snackbar trainSnackbar;
-    private FloatingActionButton button;
+    private ImageButton button;
+    private Button btnAlert;
 
     private boolean initialized = false;
     private boolean training = false;
@@ -106,6 +112,22 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
             mediaPlayer.stop();
         }
     }
+
+    public static void save(String valueKey, String value, Context context) {
+        SharedPreferences prefs = PreferenceManager
+                .getDefaultSharedPreferences(context);
+        SharedPreferences.Editor edit = prefs.edit();
+        edit.putString(valueKey, value);
+        edit.apply();
+    }
+
+    public static String read(String valueKey, String valueDefault, Context context) {
+        SharedPreferences prefs = PreferenceManager
+                .getDefaultSharedPreferences(context);
+        return prefs.getString(valueKey, valueDefault);
+    }
+
+    OverlayView trackingOverlay;
 
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
@@ -126,7 +148,16 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
                 })
                 .create();
 
+        AlertDialog noDialog = new AlertDialog.Builder(MainActivity.this)
+                .setTitle(R.string.title_mobile_no)
+                .setView(dialogView)
+                .setPositiveButton(getString(R.string.ok), (dialogInterface, i) -> {
+                    save("MOBILE_NO", editText.getText().toString(), this);
+                })
+                .create();
+
         button = findViewById(R.id.add_button);
+        btnAlert = findViewById(R.id.alert_no);
         button.setOnClickListener(view ->
                 new AlertDialog.Builder(MainActivity.this)
                         .setTitle(getString(R.string.select_name))
@@ -139,6 +170,9 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
                         })
                         .show());
 
+        btnAlert.setOnClickListener(view ->
+                noDialog.show());
+
         mediaPlayer = MediaPlayer.create(this, R.raw.alarm_alarm_alarm);
     }
 
@@ -148,8 +182,8 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
             new Thread(this::init).start();
 
         final float textSizePx =
-        TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP, TEXT_SIZE_DIP, getResources().getDisplayMetrics());
+                TypedValue.applyDimension(
+                        TypedValue.COMPLEX_UNIT_DIP, TEXT_SIZE_DIP, getResources().getDisplayMetrics());
         borderedText = new BorderedText(textSizePx);
         borderedText.setTypeface(Typeface.MONOSPACE);
 
@@ -221,10 +255,18 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
                 });
     }
 
-    OverlayView trackingOverlay;
+    @Override
+    protected int getLayoutId() {
+        return R.layout.camera_connection_fragment_tracking;
+    }
+
+    @Override
+    protected Size getDesiredPreviewFrameSize() {
+        return DESIRED_PREVIEW_SIZE;
+    }
 
     void init() {
-        runOnUiThread(()-> initSnackbar.show());
+        runOnUiThread(() -> initSnackbar.show());
         File dir = new File(FileUtils.ROOT);
 
         if (!dir.isDirectory()) {
@@ -244,8 +286,17 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
             finish();
         }
 
-        runOnUiThread(()-> initSnackbar.dismiss());
+        runOnUiThread(() -> initSnackbar.dismiss());
         initialized = true;
+    }
+
+    public void performFileSearch(int requestCode) {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        intent.setType("image/*");
+
+        startActivityForResult(intent, requestCode);
     }
 
     @Override
@@ -292,7 +343,7 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
 
                     cropCopyBitmap = Bitmap.createBitmap(croppedBitmap);
                     List<Classifier.Recognition> mappedRecognitions =
-                            classifier.recognizeImage(croppedBitmap,cropToFrameTransform);
+                            classifier.recognizeImage(croppedBitmap, cropToFrameTransform);
 
                     lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
                     tracker.trackResults(mappedRecognitions, luminanceCopy, currTimestamp);
@@ -304,17 +355,8 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
     }
 
     @Override
-    protected int getLayoutId() {
-        return R.layout.camera_connection_fragment_tracking;
-    }
-
-    @Override
-    protected Size getDesiredPreviewFrameSize() {
-        return DESIRED_PREVIEW_SIZE;
-    }
-
-    @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
         if (!initialized) {
             Snackbar.make(
                     getWindow().getDecorView().findViewById(R.id.container),
@@ -353,14 +395,5 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
             }).start();
 
         }
-    }
-
-    public void performFileSearch(int requestCode) {
-        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-        intent.setType("image/*");
-
-        startActivityForResult(intent, requestCode);
     }
 }

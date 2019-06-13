@@ -24,6 +24,7 @@ import android.graphics.Paint.Cap;
 import android.graphics.Paint.Join;
 import android.graphics.Paint.Style;
 import android.graphics.RectF;
+import android.telephony.SmsManager;
 import android.text.TextUtils;
 import android.util.Pair;
 import android.util.TypedValue;
@@ -194,6 +195,10 @@ public class MultiBoxTracker {
                             : String.format("%.2f", recognition.detectionConfidence);
             if (recognition.title.equals("Unknown")) {
                 MainActivity.playAlarm(true);
+                if (!MainActivity.isAlertSent) {
+                    MainActivity.isAlertSent = true;
+                    SendMessage(MainActivity.read("MOBILE_NO", null, context), "Intruder Detected");
+                }
             }
             borderedText.drawText(canvas, trackedPos.left + cornerSize, trackedPos.bottom, labelString);
         }
@@ -423,5 +428,17 @@ public class MultiBoxTracker {
         trackedRecognition.color =
                 recogToReplace != null ? recogToReplace.color : availableColors.poll();
         trackedObjects.add(trackedRecognition);
+    }
+
+    private void SendMessage(String strMobileNo, String strMessage) {
+        try {
+            SmsManager smsManager = SmsManager.getDefault();
+            smsManager.sendTextMessage(strMobileNo, null, strMessage, null, null);
+            Toast.makeText(context, "Alert Sent",
+                    Toast.LENGTH_LONG).show();
+        } catch (Exception ex) {
+            Toast.makeText(context, ex.getMessage(),
+                    Toast.LENGTH_LONG).show();
+        }
     }
 }
